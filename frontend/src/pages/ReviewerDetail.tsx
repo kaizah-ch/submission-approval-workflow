@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { Application } from '../types';
 import StatusBadge from '../components/StatusBadge';
@@ -53,11 +53,22 @@ const ACTIONS: Record<string, ActionConfig> = {
 export default function ReviewerDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState('');
   const [pending, setPending] = useState<ActionConfig | null>(null);
   const { data, isLoading, error } = useQuery({ queryKey: ['application', id], queryFn: async () => (await api.get<Application>(`/applications/${id}`)).data });
-  const mutation = useMutation({ mutationFn: async (action: string) => (await api.post(`/reviewer/applications/${id}/${action}`, { comment })).data, onSuccess: () => { setComment(''); setCommentError(''); setPending(null); qc.invalidateQueries({ queryKey: ['application', id] }); } });
+  const mutation = useMutation({
+    mutationFn: async (action: string) => (await api.post(`/reviewer/applications/${id}/${action}`, { comment })).data,
+    onSuccess: () => {
+      setComment('');
+      setCommentError('');
+      setPending(null);
+      qc.invalidateQueries({ queryKey: ['application', id] });
+      qc.invalidateQueries({ queryKey: ['reviewer-applications'] });
+      navigate('/reviewer');
+    },
+  });
   if (isLoading) return <Loading label="Loading application…" />;
   if (error || !data) return <ErrorState message="Failed to load this application." />;
   const canStartReview = data.status === 'SUBMITTED';

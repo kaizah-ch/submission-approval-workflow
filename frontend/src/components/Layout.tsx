@@ -9,7 +9,7 @@ export function getUser(): AppUser | null {
 export default function Layout() {
   const navigate = useNavigate();
   const user = getUser();
-  const logout = () => { localStorage.clear(); navigate('/login'); };
+  const logout = () => { localStorage.clear(); navigate('/login', { replace: true }); };
   return <div>
     <header className="border-b bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between p-4">
       <Link to="/" className="font-bold">Submission Workflow</Link>

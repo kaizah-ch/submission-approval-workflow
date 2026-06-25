@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { getUser } from '../components/Layout';
 import { Application } from '../types';
@@ -11,8 +11,16 @@ export default function ApplicationDetail() {
   const { id } = useParams();
   const user = getUser();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useQuery({ queryKey: ['application', id], queryFn: async () => (await api.get<Application>(`/applications/${id}`)).data });
-  const mutation = useMutation({ mutationFn: async (url: string) => (await api.post(url, {})).data, onSuccess: () => qc.invalidateQueries({ queryKey: ['application', id] }) });
+  const mutation = useMutation({
+    mutationFn: async (url: string) => (await api.post(url, {})).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['application', id] });
+      qc.invalidateQueries({ queryKey: ['my-applications'] });
+      navigate('/applicant');
+    },
+  });
   if (isLoading) return <Loading label="Loading application…" />;
   if (error || !data) return <ErrorState message="Failed to load this application." />;
   const canEdit = user?.role === 'APPLICANT' && ['DRAFT', 'RETURNED_FOR_CHANGES'].includes(data.status);
