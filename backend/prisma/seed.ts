@@ -3,6 +3,9 @@ import { PrismaClient, Role, ApplicationCategory } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Idempotent seed: upserts make re-runs safe, and `update: {}` intentionally
+// leaves existing rows untouched so seeding never overwrites data created during
+// a demo (e.g. the sample application's current workflow status is preserved).
 async function main() {
   const passwordHash = await bcrypt.hash('Password123!', 10);
   const applicant = await prisma.user.upsert({

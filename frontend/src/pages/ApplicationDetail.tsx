@@ -15,6 +15,8 @@ export default function ApplicationDetail() {
   const { data, isLoading, error } = useQuery({ queryKey: ['application', id], queryFn: async () => (await api.get<Application>(`/applications/${id}`)).data });
   const mutation = useMutation({
     mutationFn: async (url: string) => (await api.post(url, {})).data,
+    // After submitting, the detail view's actions no longer apply, so return the
+    // applicant to their list and refresh both the list and this application.
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['application', id] });
       qc.invalidateQueries({ queryKey: ['my-applications'] });

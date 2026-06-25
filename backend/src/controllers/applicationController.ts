@@ -5,6 +5,8 @@ import { prisma } from '../config/prisma';
 import { ApiError } from '../utils/apiError';
 import { assertTransitionAllowed, WorkflowAction } from '../services/workflowService';
 
+// Whitelists the only client-settable fields. Notably excludes `status` and
+// `ownerId`, so a request body can never self-approve or change ownership.
 const applicationInputSchema = z.object({
   title: z.string().trim().min(3, 'Title must be at least 3 characters'),
   category: z.nativeEnum(ApplicationCategory),
@@ -23,6 +25,7 @@ const reviewerQuerySchema = z.object({
 export async function createApplication(req: Request, res: Response) {
   if (req.user!.role !== Role.APPLICANT) throw new ApiError(403, 'Only applicants can create applications');
   const body = applicationInputSchema.parse(req.body);
+  // Ownership is bound to the authenticated user, never taken from the request body.
   const application = await prisma.application.create({
     data: { ...body, amount: body.amount ?? null, ownerId: req.user!.id },
   });
@@ -91,6 +94,8 @@ export async function updateApplication(req: Request, res: Response) {
     throw new ApiError(409, 'Applications cannot be edited after submission unless returned for changes');
   }
   const body = applicationInputSchema.parse(req.body);
+  // Editing a returned application sends it back to DRAFT for resubmission. That
+  // is a real status change, so when it happens it is recorded in the audit trail.
   const updated = await prisma.$transaction(async (tx) => {
     const app = await tx.application.update({ where: { id: existing.id }, data: { ...body, amount: body.amount ?? null, status: 'DRAFT' } });
     if (existing.status !== 'DRAFT') {
@@ -109,6 +114,8 @@ async function transition(req: Request, res: Response, action: WorkflowAction) {
   if (!application) throw new ApiError(404, 'Application not found');
   if (action === 'SUBMIT' && application.ownerId !== req.user!.id) throw new ApiError(403, 'Only the owner can submit this application');
   const newStatus = assertTransitionAllowed({ action, currentStatus: application.status, userRole: req.user!.role, comment });
+  // Status update and audit row are written in one transaction, so a status can
+  // never change without a matching history entry (and vice versa).
   const updated = await prisma.$transaction(async (tx) => {
     const app = await tx.application.update({ where: { id: application.id }, data: { status: newStatus } });
     await tx.auditLog.create({

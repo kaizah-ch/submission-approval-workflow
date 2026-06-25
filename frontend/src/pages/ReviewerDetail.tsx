@@ -60,6 +60,8 @@ export default function ReviewerDetail() {
   const { data, isLoading, error } = useQuery({ queryKey: ['application', id], queryFn: async () => (await api.get<Application>(`/applications/${id}`)).data });
   const mutation = useMutation({
     mutationFn: async (action: string) => (await api.post(`/reviewer/applications/${id}/${action}`, { comment })).data,
+    // After a decision, return to the queue and invalidate both the queue and
+    // this application so they reflect the new status.
     onSuccess: () => {
       setComment('');
       setCommentError('');

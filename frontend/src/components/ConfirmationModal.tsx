@@ -23,6 +23,8 @@ export default function ConfirmationModal({
 }: ConfirmationModalProps) {
   if (!open) return null;
   return (
+    // Clicking the backdrop cancels; stopPropagation on the panel keeps clicks
+    // inside the dialog from bubbling up and closing it.
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="card w-full max-w-md space-y-4" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold">{title}</h2>

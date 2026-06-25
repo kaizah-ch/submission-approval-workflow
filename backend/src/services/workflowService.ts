@@ -10,6 +10,10 @@ type TransitionRule = {
   requiresComment?: boolean;
 };
 
+// Single source of truth for the workflow. Each action declares the statuses it
+// may start from, the status it produces, the role allowed to perform it, and
+// whether a comment is mandatory. Controllers consult this table so the rules
+// can never drift between endpoints.
 export const transitionRules: Record<WorkflowAction, TransitionRule> = {
   SUBMIT: { from: ['DRAFT', 'RETURNED_FOR_CHANGES'], to: 'SUBMITTED', role: 'APPLICANT' },
   START_REVIEW: { from: ['SUBMITTED'], to: 'UNDER_REVIEW', role: 'REVIEWER' },
@@ -25,12 +29,15 @@ export function assertTransitionAllowed(input: {
   comment?: string | null;
 }) {
   const rule = transitionRules[input.action];
+  // Checks run most- to least-fundamental: wrong role (403) before an
+  // out-of-sequence transition (409) before a missing mandatory comment (400).
   if (input.userRole !== rule.role) {
     throw new ApiError(403, `Only ${rule.role.toLowerCase()} users can perform ${input.action.toLowerCase()}`);
   }
   if (!rule.from.includes(input.currentStatus)) {
     throw new ApiError(409, `Cannot perform ${input.action.toLowerCase()} from status ${input.currentStatus}`);
   }
+  // Reject and return must carry a justification, which is persisted on the audit log.
   if (rule.requiresComment && !input.comment?.trim()) {
     throw new ApiError(400, `${input.action.toLowerCase()} requires a comment`);
   }

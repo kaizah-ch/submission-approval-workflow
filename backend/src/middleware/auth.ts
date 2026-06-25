@@ -13,6 +13,9 @@ declare global {
   }
 }
 
+// Gate for every protected route: verifies the Bearer JWT's signature and
+// expiry, then attaches the decoded user to req.user. A missing header and an
+// invalid/expired token both surface as 401 so the client can re-authenticate.
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) throw new ApiError(401, 'Authentication required');
@@ -24,6 +27,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   }
 }
 
+// Reusable role gate; assumes requireAuth has already populated req.user.
 export function requireRole(role: Role) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) throw new ApiError(401, 'Authentication required');
