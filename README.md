@@ -6,23 +6,46 @@ Applicants create and submit requests; reviewers move them through the workflow 
 
 ## Live Demo
 
-- Frontend: _TODO after deployment_
-- Backend API: _TODO after deployment_
+- **Frontend:** _TODO: insert final Vercel URL_
+- **Backend API:** https://submission-approval-workflow-backend.onrender.com
+- **Health check:** https://submission-approval-workflow-backend.onrender.com/health
 
-## Test Credentials
+### Test Credentials
 
 | Role | Email | Password |
 |---|---|---|
 | Applicant | applicant@example.com | Password123! |
 | Reviewer | reviewer@example.com | Password123! |
 
-## Tech Stack
+## Deployment Notes
 
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Hook Form
-- **Backend:** Node.js, Express, TypeScript, Prisma
-- **Database:** PostgreSQL
-- **Testing:** Jest, Supertest
+- The backend is hosted on **Render** (free tier).
+- The database is hosted on **Neon** (managed PostgreSQL, free tier).
+- Because the Render and Neon free tiers suspend after inactivity, the **first request (such as login) may take around 30–60 seconds** while the services wake up.
+- Once warmed up, subsequent requests are significantly faster.
+
+## Architecture
+
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS — with TanStack Query and React Hook Form
+- **Backend:** Express, TypeScript, Prisma ORM
+- **Database:** PostgreSQL (Neon)
+- **Authentication:** JWT
 - **Local infrastructure:** Docker Compose
+- **Testing:** Jest, Supertest
+
+## Features
+
+- **Applicant workflow** — create, edit, and submit applications; revise and resubmit when returned for changes.
+- **Reviewer workflow** — start review, approve, reject, or return applications for changes.
+- **Workflow state machine** — a single source of truth that permits only legal status transitions.
+- **Audit trail** — every status change is recorded immutably with actor, timestamp, and optional comment.
+- **Server-side authorization** — every mutation is re-checked on the backend; the client is never trusted.
+- **Role-based access control** — applicant and reviewer capabilities are strictly separated.
+- **Validation** — request bodies and query parameters are validated with Zod.
+- **Reviewer queue search and filtering** — search by title, applicant name, or category, combined with a status filter.
+- **Dashboard summary cards** — at-a-glance counts of applications by status.
+- **Responsive UI** — color-coded status badges and a layout that adapts to small and large screens.
+- **Comprehensive backend tests** — 37 automated tests covering the workflow, authorization, validation, and audit trail.
 
 ## Local Setup
 
@@ -195,17 +218,17 @@ cd backend
 npm test
 ```
 
-Tests are split into two layers:
+The project currently contains **37 automated backend tests** across two layers:
 
 - **Unit tests (`tests/workflowService.test.ts`)** exercise the state machine in isolation: every legal transition returns the correct next status, and every illegal one throws with the right HTTP status — covering role restrictions (`403`), illegal transitions (`409`), and required comments (`400`).
 - **API tests (`tests/authz.test.ts`)** use Supertest against the real Express app and database to prove authorization is enforced, not assumed:
   - unauthenticated and invalid-token requests return `401`;
   - role segregation on list endpoints (`403`);
   - an applicant cannot approve/reject/return/start-review via direct API calls (`403`);
-  - reject/return without a comment return `400`;
+  - reject/return without a comment return `400`, and invalid query parameters are rejected with `400` (validation);
   - illegal transitions return `409`;
-  - an applicant cannot view or edit another applicant's application (`403`);
-  - **positive controls**: an owner can edit their own draft, and a reviewer's approval succeeds **and writes the expected audit log row**.
+  - **ownership**: an applicant cannot view or edit another applicant's application (`403`);
+  - **positive controls**: an owner can edit their own draft, and a reviewer's approval succeeds **and writes the expected audit log row** (audit log verification).
 
 The positive controls matter as much as the negative ones: they confirm the workflow actually works and that the audit trail is written, rather than only checking that bad requests fail.
 
@@ -217,6 +240,13 @@ The positive controls matter as much as the negative ones: they confirm the work
 - **Async error handling.** Express 4 does not forward rejected promises to error middleware, so async handlers are wrapped in a small `asyncHandler` utility. This ensures invalid actions return structured HTTP errors instead of hanging the request.
 - **Input validation at the boundary.** Zod validates request bodies and query params, returning `400` for bad input rather than letting it reach the database.
 - **PostgreSQL + Prisma.** Relational integrity fits the user/application/audit relationships, and Prisma keeps the schema explicit and access type-safe.
+
+## Production Readiness
+
+- **Database migrations** are managed with Prisma (`prisma migrate`), so schema changes are versioned and repeatable.
+- **Environment variables** configure the database URL, JWT secret, and allowed origins, and are never committed.
+- **Docker Compose** provides a reproducible local PostgreSQL instance for development.
+- **Deployment:** the frontend runs on **Vercel**, the backend on **Render**, and the database on **Neon** managed PostgreSQL.
 
 ## Trade-offs and What I Would Add With More Time
 
@@ -237,10 +267,9 @@ With more time I would add:
 
 ## AI Usage
 
-I used AI assistance during development and was responsible for reviewing, testing, and understanding all output.
+I used AI assistance during development and was responsible for reviewing, testing, adapting, and understanding all output.
 
-- **ChatGPT** — architecture planning, workflow design, debugging guidance, README drafting, and code review.
-- **Claude** — frontend UX review, refactoring suggestions, README improvement, and test review.
+- **ChatGPT** — architecture planning, workflow design, backend review, debugging, deployment guidance, documentation, and code review.
+- **Claude** — frontend UX improvements, README refinement, refactoring suggestions, deployment review, and testing improvements.
 
-All AI-assisted code and documentation were reviewed, tested, and understood by me before submission. I can explain every design decision, workflow rule, authorization check, and test in this project.
-# submission-approval-workflow
+All AI-generated suggestions were reviewed, tested, adapted where necessary, and fully understood before being incorporated into the project. I can explain every design decision, workflow rule, authorization check, and test in this submission.
