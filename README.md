@@ -6,7 +6,7 @@ Applicants create and submit requests; reviewers move them through the workflow 
 
 ## Live Demo
 
-- **Frontend:** _TODO: insert final Vercel URL_
+- **Frontend:** https://submission-approval-workflow.vercel.app
 - **Backend API:** https://submission-approval-workflow-backend.onrender.com
 - **Health check:** https://submission-approval-workflow-backend.onrender.com/health
 
