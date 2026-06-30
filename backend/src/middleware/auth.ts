@@ -26,12 +26,3 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
     throw new ApiError(401, 'Invalid or expired token');
   }
 }
-
-// Reusable role gate; assumes requireAuth has already populated req.user.
-export function requireRole(role: Role) {
-  return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user) throw new ApiError(401, 'Authentication required');
-    if (req.user.role !== role) throw new ApiError(403, 'Forbidden');
-    next();
-  };
-}
